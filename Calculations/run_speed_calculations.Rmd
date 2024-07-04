@@ -1,5 +1,5 @@
 ---
-title: "R_Analysis_Practice"
+title: "Baserunner Speed Calculations"
 author: "Ryan Dajani"
 date: "2024-06-21"
 output: pdf_document
@@ -12,6 +12,7 @@ knitr::opts_chunk$set(echo = TRUE)
 ## Analyzing Caught Stealing Percentage of different runners
 
 ##Load in libraries
+
 ```{r, warning=FALSE}
 #install.packages(c("tidyverse", "arrow", "gt"))
 suppressPackageStartupMessages(library(tidyverse))
@@ -49,6 +50,7 @@ View(end_time)
 ```
 
 #get distances between each base (in ft)
+
 ```{r}
 first_base_x <- 62.58
 first_base_y <- 63.64
@@ -65,7 +67,8 @@ base_distance <- sqrt(first_to_second_x^2 + first_to_second_y^2)
 base_distance
 ```
 
-# calculate runner speed in (ft/millisecond)
+# calculate runner speed in (ft/second)
+
 ```{r}
 delta_time <- end_time %>%
   group_by(game_str, play_id) %>%
