@@ -6,6 +6,8 @@
 library(tidyverse)
 library(dplyr)
 library(arrow)
+library(gt)
+library(webshot2)
 ## creating a vector of all play_id that have a steal occur and then using this
 ## to filter out. Also need game_str since same play_id can occur in different games
 
@@ -79,5 +81,105 @@ for(i in 1:nrow(pre_steal)){
 steal
 pre_steal$valid_steal <- steal
 
-view(pre_steal)
+catcher_allowed_steals <- pre_steal %>% group_by(catcher.x) %>%
+  summarize(
+    steal_allowed = sum(valid_steal),
+    steal_attempts = n(),
+    caught_stealing_percentage = (n() - sum(valid_steal))/ (n())
+    )
 
+ten_catchers_who_allowed_most_steals <- catcher_allowed_steals %>% arrange(desc(steal_attempts)) %>%
+  slice_head(n=10)
+
+ten_catchers_who_allowed_most_steals
+
+battery_allowed_steals <- pre_steal %>% group_by(catcher.x,pitcher.x) %>%
+  summarize(
+    steal_allowed = sum(valid_steal),
+    steal_attempts = n(),
+    caught_stealing_percentage = (n() - sum(valid_steal))/ (n())
+  ) %>% ungroup()
+
+batteries_who_allowed_most_steals <- battery_allowed_steals %>% arrange(desc(steal_attempts)) %>% slice_head(n=10)
+
+battery_allowed_steals
+batteries_who_allowed_most_steals
+
+gt_table <- ten_catchers_who_allowed_most_steals %>%
+  gt() %>%
+  tab_header(
+    title = "Ten Catchers Who Allowed Most Steals",
+    subtitle = "Steals Attempted and Allowed"
+  ) %>%
+  cols_label(
+    catcher.x = "Catcher ID",
+    steal_allowed = "Total Steals Allowed",
+    steal_attempts = "Total Attempt",
+    caught_stealing_percentage = "CS%"
+  ) %>%
+  fmt_number(
+    columns = c(steal_allowed, steal_attempts,caught_stealing_percentage),
+    decimals = 2
+  ) %>%
+  tab_style(
+    style = list(
+      cell_fill(color = "lightblue"),
+      cell_text(weight = "bold")
+    ),
+    locations = cells_body(
+      rows = steal_allowed > 10
+    )
+  ) %>%
+  tab_footnote(
+    footnote = "Steals greater than 10 are highlighted.",
+    locations = cells_body(
+      columns = steal_allowed,
+      rows = steal_allowed > 10
+    )
+  ) %>%
+  tab_source_note(
+    source_note = "SMT Data"
+  )
+
+battery_table <- batteries_who_allowed_most_steals %>%
+  gt() %>%
+  tab_header(
+    title = "Ten Catcher and pitcher pairings Who Allowed Most Steals",
+    subtitle = "Steals Attempted and Allowed"
+  ) %>%
+  cols_label(
+    catcher.x = "Catcher ID",
+    pitcher.x = "Pitcher ID",
+    steal_allowed = "Total Steals Allowed",
+    steal_attempts = "Total Attempt",
+    caught_stealing_percentage = "CS%"
+  ) %>%
+  fmt_number(
+    columns = c(steal_allowed, steal_attempts,caught_stealing_percentage),
+    decimals = 2
+  ) %>%
+  tab_style(
+    style = list(
+      cell_fill(color = "lightblue"),
+      cell_text(weight = "bold")
+    ),
+    locations = cells_body(
+      rows = steal_allowed > 10
+    )
+  ) %>%
+  tab_footnote(
+    footnote = "Steals greater than 10 are highlighted.",
+    locations = cells_body(
+      columns = steal_allowed,
+      rows = steal_allowed > 5
+    )
+  ) %>%
+  tab_source_note(
+    source_note = "SMT Data"
+  )
+
+# Display the table
+gtsave(gt_table, "table.png")
+gtsave(battery_table, "battery.png")
+webshot2::webshot("table.pdf")
+webshot2::webshot("battery.pdf")
