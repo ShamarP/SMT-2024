@@ -1,0 +1,85 @@
+---
+title: "Baserunner Speed Calculations"
+author: "Ryan Dajani"
+date: "2024-06-21"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Analyzing Caught Stealing Percentage of different runners
+
+##Load in libraries
+
+```{r, warning=FALSE}
+#install.packages(c("tidyverse", "arrow", "gt"))
+suppressPackageStartupMessages(library(tidyverse))
+suppressPackageStartupMessages(library(arrow))
+library(gt)
+library(dplyr)
+```
+
+## Get the start and end times for each play
+
+#get the timestamp when play started and when the player reached the base (in milliseconds)
+
+```{r}
+#filter out games from filtered_player_pos 
+# so that each play in filtered_player_pos
+# only includes game that a seal was successful
+ 
+end_time <- filtered_player_pos %>%
+   inner_join(filter_steals, by=c("game_str", "play_id"))
+
+end_time_full <- end_time %>%
+  filter(player_position == 11 | player_position == 12)
+
+
+end_time <- end_time_full %>%
+  group_by(game_str, play_id, player_position) %>%
+  summarise( 
+    "min_value(ms)" = min(timestamp, na.rm = TRUE),
+    "max_value(ms)" = max(timestamp, na.rm = TRUE)) %>%
+  ungroup()
+
+
+View(end_time)
+
+```
+
+#get distances between each base (in ft)
+
+```{r}
+first_base_x <- 62.58
+first_base_y <- 63.64
+
+second_base_x <- 0
+second_base_y <- 127.28
+
+first_to_second_x <- first_base_x
+first_to_second_y <- second_base_y - first_base_y
+
+
+base_distance <- sqrt(first_to_second_x^2 + first_to_second_y^2)
+
+base_distance
+```
+
+# calculate runner speed in (ft/second)
+
+```{r}
+delta_time <- end_time %>%
+  group_by(game_str, play_id) %>%
+  mutate("delta_time(ms)" = `max_value(ms)` - `min_value(ms)`)%>%
+  ungroup()
+
+run_speed <- delta_time %>%
+  group_by(game_str, play_id) %>%
+  mutate("speed(ft/s)" = round(base_distance)/((`max_value(ms)` /1000) - (`min_value(ms)` / 1000)), 2) %>%
+  ungroup()
+
+View(run_speed)
+
+```
