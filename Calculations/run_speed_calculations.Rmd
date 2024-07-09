@@ -21,65 +21,116 @@ library(gt)
 library(dplyr)
 ```
 
-## Get the start and end times for each play
-
-#get the timestamp when play started and when the player reached the base (in milliseconds)
-
+# filter the player_positions data set to include plays by runners on first and second base
 ```{r}
-#filter out games from filtered_player_pos 
-# so that each play in filtered_player_pos
-# only includes game that a seal was successful
- 
-end_time <- filtered_player_pos %>%
+end_time_full <- filtered_player_pos %>%
    inner_join(filter_steals, by=c("game_str", "play_id"))
 
-end_time_full <- end_time %>%
+end_time_full <- end_time_full %>%
   filter(player_position == 11 | player_position == 12)
 
 
-end_time <- end_time_full %>%
-  group_by(game_str, play_id, player_position) %>%
-  summarise( 
-    "min_value(ms)" = min(timestamp, na.rm = TRUE),
-    "max_value(ms)" = max(timestamp, na.rm = TRUE)) %>%
-  ungroup()
 
-
-View(end_time)
+View(end_time_full)
 
 ```
 
-#get distances between each base (in ft)
+#get distances between each base (in ft including leadoff)
 
 ```{r}
+
 first_base_x <- 62.58
 first_base_y <- 63.64
 
-second_base_x <- 0
+second_base_x <- 0 
 second_base_y <- 127.28
 
-first_to_second_x <- first_base_x
-first_to_second_y <- second_base_y - first_base_y
+third_base_x <- -62.58
+third_base_y <- 63.64
+
+centre_corner_dist <- 0.75 * sqrt(2)
+
+second_corner_1_base_x <- second_base_x 
+second_corner_1_base_y <- second_base_y - centre_corner_dist
+
+second_corner_2_base_x <- second_base_x + centre_corner_dist
+second_corner_2_base_y <- second_base_y
+
+f_s_buffer_1 <- sqrt(second_corner_1_base_x ^ 2 + second_corner_1_base_y^2) + 6
+f_s_buffer_2 <- sqrt(second_corner_2_base_x ^ 2 + second_corner_2_base_y^2) + 6
+
+third_corner_1_base_x <- third_base_x
+third_corner_1_base_y <- second_base_y + centre_corner_dist
+
+third_corner_2_base_x <- third_base_x + centre_corner_dist
+third_corner_2_base_y <- third_base_y
+
+s_t_buffer_1 <- sqrt(third_corner_1_base_x ^ 2 + third_corner_1_base_y^2) + 6
+s_t_buffer_2 <- sqrt(third_corner_2_base_x ^ 2 + third_corner_2_base_y^2) + 6
 
 
-base_distance <- sqrt(first_to_second_x^2 + first_to_second_y^2)
+f_leadoff_x <- first_base_x # - fb_leadoff_x
+f_leadoff_y <- first_base_y # + fb_leadoff_y
 
-base_distance
+s_leadoff_x <- second_base_x # - sb_leadoff_x
+s_leadoff_y <- second_base_y # - sb_leadoff_y
+```
+```{r}
+remove(delta_time)
 ```
 
 # calculate runner speed in (ft/second)
 
 ```{r}
-delta_time <- end_time %>%
-  group_by(game_str, play_id) %>%
-  mutate("delta_time(ms)" = `max_value(ms)` - `min_value(ms)`)%>%
-  ungroup()
 
-run_speed <- delta_time %>%
-  group_by(game_str, play_id) %>%
-  mutate("speed(ft/s)" = round(base_distance)/((`max_value(ms)` /1000) - (`min_value(ms)` / 1000)), 2) %>%
-  ungroup()
+# Look at acceleration (jump purposes) look at characteristics of people
+# who successfuly steal bases
+# max speed per second
 
-View(run_speed)
+end_time_full_2 <- end_time_full
+
+end_time_full_2$timestamp <- end_time_full_2$timestamp/1000
+
+velocity_calc <- function(game_string, play, position){
+  
+  new_end_time <- end_time_full_2%>%
+    filter(game_str == game_string)%>%
+    filter(play_id == play) %>%
+    filter(player_position == position)
+  
+  View(new_end_time)
+  
+  velocity_list = c()
+  
+  for (i in 2:(nrow(new_end_time)))
+  {
+    row_a <- new_end_time[i,]
+    
+    row_b <- new_end_time[i-1,]
+    
+    delta_time <- row_a$timestamp - row_b$timestamp
+    
+    
+    delta_x <- row_a$field_x - row_b$field_x
+    delta_y <- row_a$field_y - row_b$field_y
+    
+    velocity_x <- delta_x / delta_time
+    velocity_y <- delta_y / delta_time
+    
+    velocity <- sqrt(velocity_x^2 + velocity_y^2)
+    
+    velocity_list <- c(velocity_list, velocity)
+    
+  }
+  print(velocity_list)
+  print(length(velocity_list))
+}
+velocity_calc("1884_143_Vis4BE_Home4A", 251, 11)
+  
+
+
+#acceleration = (D / T^2)
+
+
 
 ```
