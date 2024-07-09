@@ -77,6 +77,20 @@ for(i in 1:nrow(pre_steal)){
   }
   steal <- c(steal,steal_val)
 }
+## Here trying to filter the differences between lines, excluding the changes in plays
+#diffs <- steals %>% group_by(game_str, play_id)%>%
+  #mutate(difference = )
+
+## initial ideas, found time of pitcher's throw
+pitch_time <- steals %>% group_by(game_str, play_id) %>% 
+  mutate(pitcher_pitch = min(timestamp)) %>%
+  ungroup()
+
+## Filters steals to get rid of bounces
+no_bounce_steals <- steals %>% 
+  group_by(game_str, play_id) %>%
+  filter(!any(player_position == 255)) %>%
+  ungroup()
 
 steal
 pre_steal$valid_steal <- steal
@@ -179,7 +193,7 @@ battery_table <- batteries_who_allowed_most_steals %>%
   )
 
 # Display the table
-gtsave(gt_table, "table.png")
-gtsave(battery_table, "battery.png")
-webshot2::webshot("table.pdf")
-webshot2::webshot("battery.pdf")
+#gtsave(gt_table, "table.png")
+#gtsave(battery_table, "battery.png")
+#webshot2::webshot("table.pdf")
+#webshot2::webshot("battery.pdf")
