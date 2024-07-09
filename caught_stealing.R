@@ -78,6 +78,21 @@ for(i in 1:nrow(pre_steal)){
   steal <- c(steal,steal_val)
 }
 
+differences <- steals %>% group_by(game_str, play_id) %>% filter(!player_pos == 255) %>%
+  for (i in 2:(nrow(steals) - 1)) {
+    differences[i] <- steals$value(timestamp[i]) - steals$value(timestamp[i-1])
+  } %>%
+  mutate(differences = differences[i]) %>%
+  ungroup()
+
+
+pitch_time <- steals %>% group_by(game_str, play_id) %>% 
+  mutate(pitcher_pitch = min(timestamp)) %>%
+  ungroup()
+pitch_time <- pitch_time %>% group_by(game_str, play_id) %>% filter(event_code == 2) %>%
+  mutate(pitch_time = min(timestamp)) %>%
+  ungroup()
+
 steal
 pre_steal$valid_steal <- steal
 
@@ -179,7 +194,7 @@ battery_table <- batteries_who_allowed_most_steals %>%
   )
 
 # Display the table
-gtsave(gt_table, "table.png")
-gtsave(battery_table, "battery.png")
-webshot2::webshot("table.pdf")
-webshot2::webshot("battery.pdf")
+#gtsave(gt_table, "table.png")
+#gtsave(battery_table, "battery.png")
+#webshot2::webshot("table.pdf")
+#webshot2::webshot("battery.pdf")
