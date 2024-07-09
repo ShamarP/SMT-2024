@@ -77,20 +77,19 @@ for(i in 1:nrow(pre_steal)){
   }
   steal <- c(steal,steal_val)
 }
+## Here trying to filter the differences between lines, excluding the changes in plays
+#diffs <- steals %>% group_by(game_str, play_id)%>%
+  #mutate(difference = )
 
-differences <- steals %>% group_by(game_str, play_id) %>% filter(!player_pos == 255) %>%
-  for (i in 2:(nrow(steals) - 1)) {
-    differences[i] <- steals$value(timestamp[i]) - steals$value(timestamp[i-1])
-  } %>%
-  mutate(differences = differences[i]) %>%
-  ungroup()
-
-
+## initial ideas, found time of pitcher's throw
 pitch_time <- steals %>% group_by(game_str, play_id) %>% 
   mutate(pitcher_pitch = min(timestamp)) %>%
   ungroup()
-pitch_time <- pitch_time %>% group_by(game_str, play_id) %>% filter(event_code == 2) %>%
-  mutate(pitch_time = min(timestamp)) %>%
+
+## Filters steals to get rid of bounces
+no_bounce_steals <- steals %>% 
+  group_by(game_str, play_id) %>%
+  filter(!any(player_position == 255)) %>%
   ungroup()
 
 steal
