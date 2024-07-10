@@ -181,5 +181,3 @@ battery_table <- batteries_who_allowed_most_steals %>%
 # Display the table
 gtsave(gt_table, "table.png")
 gtsave(battery_table, "battery.png")
-webshot2::webshot("table.pdf")
-webshot2::webshot("battery.pdf")
