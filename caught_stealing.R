@@ -81,7 +81,7 @@ no_bounce_steals <- steals %>%
   filter(!any(player_position == 255)) %>%
   ungroup()
 
-steal
+
 pre_steal$valid_steal <- steal
 
 catcher_allowed_steals <- pre_steal %>% group_by(catcher.x) %>%
@@ -181,3 +181,9 @@ gtsave(gt_table, "table.png")
 gtsave(battery_table, "battery.png")
 webshot2::webshot("table.png", "table.pdf")
 webshot2::webshot("battery.png", "battery.pdf")
+
+play_id_df <- as_tibble(game_events) %>% select("game_str","play_per_game","play_id") %>% unique()
+
+pre_steal <- pre_steal %>% left_join(play_id_df,by = c("game_str","play_per_game"))
+pre_steal
+
