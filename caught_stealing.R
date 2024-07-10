@@ -1,15 +1,11 @@
-## Andy Hutchison
-## SMT 2024
-
-## I'm gonna try and filter to have only stolen bases
-## filtered_game_events from Shamar's Data_prepping
 library(tidyverse)
 library(dplyr)
 library(arrow)
 library(gt)
 library(webshot2)
-## creating a vector of all play_id that have a steal occur and then using this
-## to filter out. Also need game_str since same play_id can occur in different games
+
+# Creating a vector of all play_id that have a steal occur and then using this
+# to filter out. Also need game_str since same play_id can occur in different games
 
 source("SMT_Data_starter.R")
 
@@ -21,7 +17,6 @@ steal_sequences <- list(c(1, 2, 2, 4), c(1, 2, 2, 5), c(1, 2, 2, 6),
                         c(1, 255, 2, 2, 4), c(1, 255, 2, 2, 5), c(1, 255, 2, 2, 6),
                         c(1, 2, 2, 255, 255, 4), c(1, 2, 2, 255, 255, 5), c(1, 2, 2, 255, 255, 6),
                         c(1, 255, 2, 2, 255, 4), c(1, 255, 2, 2, 255, 5), c(1, 255, 2, 2, 255, 6))
-
 
 steal_sequence_check <- function(events, steal_sequences){
   any(sapply(steal_sequences, function(sequen) all(sequen %in% events)))
@@ -47,36 +42,44 @@ steals <- almost_steals %>%
   filter(!any(player_position == 10)) %>%
   ungroup()
 
-steal_plays <- steals %>% distinct(game_str,play_id)
+steal_plays <- steals %>% distinct(game_str, play_id)
 colnames(steal_plays)[2] <- "play_per_game"
 steal_plays
 following_play <- steal_plays
 following_play$play_per_game <- following_play$play_per_game + 1
 
-
-steal_att <- semi_join(filtered_game_info,steal_plays,by=c("game_str","play_per_game"))
+steal_att <- semi_join(filtered_game_info, steal_plays, by = c("game_str", "play_per_game"))
 game_info <- game_info %>% as_tibble()
-post_steal <- semi_join(game_info,following_play,by=c("game_str","play_per_game"))
+post_steal <- semi_join(game_info, following_play, by = c("game_str", "play_per_game"))
 steal <- c()
 
-post_steal <- post_steal %>%  mutate(play_per_game = play_per_game - 1)
-pre_steal <- steal_att %>% inner_join(post_steal, by = c("game_str","play_per_game"))
+post_steal <- post_steal %>% mutate(play_per_game = play_per_game - 1)
+pre_steal <- steal_att %>% inner_join(post_steal, by = c("game_str", "play_per_game"))
 pre_steal
 
-for(i in 1:nrow(pre_steal)){
+for (i in 1:nrow(pre_steal)) {
   steal_val <- 0
-  if(!is.na(pre_steal[i,]$first_baserunner.x)){
-    if(!is.na(pre_steal[i,]$second_baserunner.y)){
+  if (!is.na(pre_steal[i,]$first_baserunner.x)) {
+    if (!is.na(pre_steal[i,]$second_baserunner.y)) {
       steal_val <- 1
     }
   }
-  if(!is.na(pre_steal[i,]$second_baserunner.x)){
-    if(!is.na(pre_steal[i,]$third_baserunner.y)){
+  if (!is.na(pre_steal[i,]$second_baserunner.x)) {
+    if (!is.na(pre_steal[i,]$third_baserunner.y)) {
       steal_val <- 1
     }
   }
-  steal <- c(steal,steal_val)
+  steal <- c(steal, steal_val)
 }
+
+pitch_time <- steals %>% group_by(game_str, play_id) %>%
+  mutate(pitcher_pitch = min(timestamp)) %>%
+  ungroup()
+
+no_bounce_steals <- steals %>%
+  group_by(game_str, play_id) %>%
+  filter(!any(player_position == 255)) %>%
+  ungroup()
 
 steal
 pre_steal$valid_steal <- steal
@@ -85,25 +88,20 @@ catcher_allowed_steals <- pre_steal %>% group_by(catcher.x) %>%
   summarize(
     steal_allowed = sum(valid_steal),
     steal_attempts = n(),
-    caught_stealing_percentage = (n() - sum(valid_steal))/ (n())
-    )
+    caught_stealing_percentage = (n() - sum(valid_steal)) / n()
+  )
 
 ten_catchers_who_allowed_most_steals <- catcher_allowed_steals %>% arrange(desc(steal_attempts)) %>%
-  slice_head(n=10)
+  slice_head(n = 10)
 
-ten_catchers_who_allowed_most_steals
-
-battery_allowed_steals <- pre_steal %>% group_by(catcher.x,pitcher.x) %>%
+battery_allowed_steals <- pre_steal %>% group_by(catcher.x, pitcher.x) %>%
   summarize(
     steal_allowed = sum(valid_steal),
     steal_attempts = n(),
-    caught_stealing_percentage = (n() - sum(valid_steal))/ (n())
+    caught_stealing_percentage = (n() - sum(valid_steal)) / n()
   ) %>% ungroup()
 
-batteries_who_allowed_most_steals <- battery_allowed_steals %>% arrange(desc(steal_attempts)) %>% slice_head(n=10)
-
-battery_allowed_steals
-batteries_who_allowed_most_steals
+batteries_who_allowed_most_steals <- battery_allowed_steals %>% arrange(desc(steal_attempts)) %>% slice_head(n = 10)
 
 gt_table <- ten_catchers_who_allowed_most_steals %>%
   gt() %>%
@@ -118,7 +116,7 @@ gt_table <- ten_catchers_who_allowed_most_steals %>%
     caught_stealing_percentage = "CS%"
   ) %>%
   fmt_number(
-    columns = c(steal_allowed, steal_attempts,caught_stealing_percentage),
+    columns = c(steal_allowed, steal_attempts, caught_stealing_percentage),
     decimals = 2
   ) %>%
   tab_style(
@@ -144,7 +142,7 @@ gt_table <- ten_catchers_who_allowed_most_steals %>%
 battery_table <- batteries_who_allowed_most_steals %>%
   gt() %>%
   tab_header(
-    title = "Ten Catcher and pitcher pairings Who Allowed Most Steals",
+    title = "Ten Catcher and Pitcher Pairings Who Allowed Most Steals",
     subtitle = "Steals Attempted and Allowed"
   ) %>%
   cols_label(
@@ -155,7 +153,7 @@ battery_table <- batteries_who_allowed_most_steals %>%
     caught_stealing_percentage = "CS%"
   ) %>%
   fmt_number(
-    columns = c(steal_allowed, steal_attempts,caught_stealing_percentage),
+    columns = c(steal_allowed, steal_attempts, caught_stealing_percentage),
     decimals = 2
   ) %>%
   tab_style(
@@ -181,3 +179,5 @@ battery_table <- batteries_who_allowed_most_steals %>%
 # Display the table
 gtsave(gt_table, "table.png")
 gtsave(battery_table, "battery.png")
+webshot2::webshot("table.png", "table.pdf")
+webshot2::webshot("battery.png", "battery.pdf")
