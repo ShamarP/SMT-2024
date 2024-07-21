@@ -112,7 +112,7 @@ for (i in 1:nrow(no_bounce_steals)){
   }
 }
 
-View(updated_pitch_times)
+
 
 ## initial ideas, found time of pitcher's throw
 #pitch_time <- steals %>% group_by(game_str, play_id) %>%
@@ -224,3 +224,5 @@ battery_table <- batteries_who_allowed_most_steals %>%
 #gtsave(battery_table, "battery.png")
 #webshot2::webshot("table.pdf")
 #webshot2::webshot("battery.pdf")
+
+write.csv(summarized_df,file = "pitch_timings.csv",row.names = FALSE)
