@@ -81,12 +81,13 @@ for(i in 1:nrow(pre_steal)){
 steal
 pre_steal$valid_steal <- steal
 
-catcher_allowed_steals <- pre_steal %>% group_by(catcher.x) %>%
-  summarize(
+catcher_allowed_steals <- pre_steal %>%
+  group_by(catcher.x) %>%
+  dplyr::summarize(
     steal_allowed = sum(valid_steal),
     steal_attempts = n(),
-    caught_stealing_percentage = (n() - sum(valid_steal))/ (n())
-    )
+    caught_stealing_percentage = (steal_attempts - steal_allowed) / steal_attempts
+  )
 
 ten_catchers_who_allowed_most_steals <- catcher_allowed_steals %>% arrange(desc(steal_attempts)) %>%
   slice_head(n=10)
@@ -94,7 +95,7 @@ ten_catchers_who_allowed_most_steals <- catcher_allowed_steals %>% arrange(desc(
 ten_catchers_who_allowed_most_steals
 
 battery_allowed_steals <- pre_steal %>% group_by(catcher.x,pitcher.x) %>%
-  summarize(
+  dplyr::summarize(
     steal_allowed = sum(valid_steal),
     steal_attempts = n(),
     caught_stealing_percentage = (n() - sum(valid_steal))/ (n())
