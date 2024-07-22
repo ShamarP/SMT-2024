@@ -54,25 +54,28 @@ team_info <- arrow::open_csv_dataset(paste0(data_directory,"/team_info.csv"),
 ###############################################################################
 ########################## END STARTER CODE ###################################
 ###############################################################################
+## this is where i will add play id to game_info
+play_id_and_per_game <- game_events |> collect() %>% select("game_str","play_per_game","play_id")
+game_info_with_id <- merge((game_info |> collect()),play_id_and_per_game,by = c("game_str","play_per_game"),all.x = TRUE)
 
 ## the following functions filter the data based on if there is a baserunner on not on a specific base
 # "|>" is called a pipe it takes the arguments to the left and puts it into the right function
 # so we take our initial dataframe and filter it based on the requirements
-first <- game_info |> filter(!is.na(first_baserunner)&  is.na(second_baserunner)& is.na(third_baserunner)) |>  collect()
+first <- game_info_with_id |> filter(!is.na(first_baserunner)&  is.na(second_baserunner)& is.na(third_baserunner))
 
-second <- game_info |> filter(is.na(first_baserunner)&  !is.na(second_baserunner)& is.na(third_baserunner)) |>  collect()
+second <- game_info_with_id|> filter(is.na(first_baserunner)&  !is.na(second_baserunner)& is.na(third_baserunner))
 
-first_second <- game_info |> filter(!is.na(first_baserunner) &  !is.na(second_baserunner) & is.na(third_baserunner)) |>  collect()
+first_second <- game_info_with_id |> filter(!is.na(first_baserunner) &  !is.na(second_baserunner) & is.na(third_baserunner))
 
-first_third <- game_info |> filter(!is.na(first_baserunner)&  is.na(second_baserunner) & !is.na(third_baserunner)) |>  collect()
+first_third <- game_info_with_id |> filter(!is.na(first_baserunner)&  is.na(second_baserunner) & !is.na(third_baserunner))
 
 ## we filter out all the distinct gamestr and play_ids where we can expect a steal
-filtered_plays <- bind_rows(select(first,game_str,play_per_game),select(second,game_str,play_per_game),
-                            select(first_third,game_str,play_per_game),select(first_second,game_str,play_per_game))
+filtered_plays <- bind_rows(select(first,game_str,play_id),select(second,game_str,play_id),
+                            select(first_third,game_str,play_id),select(first_second,game_str,play_id))
 
 ## something weird was happening so i had to convert types not really important
-filtered_plays$play_per_game <- as.integer64(filtered_plays$play_per_game)
-filtered_plays <- filtered_plays %>%  rename(play_id = play_per_game)
+filtered_plays$play_id <- as.integer64(filtered_plays$play_id)
+
 
 ## here we have all of the player, ball positions and game events that correspond to our list of plays
 ## join is pretty much ensuring that the pairwise matchup of id and game_str holds think of it like a primary key

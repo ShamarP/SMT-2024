@@ -78,6 +78,47 @@ for(i in 1:nrow(pre_steal)){
   steal <- c(steal,steal_val)
 }
 
+## Filters steals to get rid of bounces
+no_bounce_steals <- steals %>%
+  group_by(game_str, play_id) %>%
+  filter(!any(player_position == 255)) %>%
+  ungroup()
+
+## Here trying to filter the differences between lines, excluding the changes in plays
+no_bounce_steals <- no_bounce_steals %>%
+  group_by(game_str, play_id)%>%
+  mutate(pitch_time =  (timestamp - lag(timestamp))/1000)%>%
+  mutate(exchange_time =  (timestamp - lag(timestamp))/1000)%>%
+  mutate(pop_time =  (timestamp - lag(lag(timestamp)))/1000)%>%
+  ungroup() %>% filter(!is.na(pitch_time))
+
+extract_diagonal <- function(df) {
+  n <- nrow(df)
+  diag_elements <- c(df[1, "pitch_time"], df[2, "exchange_time"], df[3, "pop_time"])
+  return(diag_elements)
+}
+summarized_df <- no_bounce_steals %>% group_by(game_str,play_id) %>%
+  summarize (diagonal = list(extract_diagonal(cur_data())),
+             .groups = 'drop') %>% unnest_wider(col = diagonal, names_sep = "")
+View(summarized_df)
+
+updated_pitch_times <- c()
+for (i in 1:nrow(no_bounce_steals)){
+  if ((no_bounce_steals$player_position[i] == 2) & (no_bounce_steals$event_code[i] == 2)) {
+    updated_pitch_times <- c(updated_pitch_times, no_bounce_steals$pitch_times[i])
+    }
+  else {
+    updated_pitch_times <- c(updated_pitch_times, 0)
+  }
+}
+
+
+
+## initial ideas, found time of pitcher's throw
+#pitch_time <- steals %>% group_by(game_str, play_id) %>%
+  #mutate(pitcher_pitch = min(timestamp)) %>%
+  #ungroup()
+
 steal
 pre_steal$valid_steal <- steal
 
@@ -180,7 +221,9 @@ battery_table <- batteries_who_allowed_most_steals %>%
   )
 
 # Display the table
-gtsave(gt_table, "table.png")
-gtsave(battery_table, "battery.png")
-webshot2::webshot("table.pdf")
-webshot2::webshot("battery.pdf")
+#gtsave(gt_table, "table.png")
+#gtsave(battery_table, "battery.png")
+#webshot2::webshot("table.pdf")
+#webshot2::webshot("battery.pdf")
+
+write.csv(summarized_df,file = "pitch_timings.csv",row.names = FALSE)
