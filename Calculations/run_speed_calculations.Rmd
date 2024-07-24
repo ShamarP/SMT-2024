@@ -26,8 +26,17 @@ library(dplyr)
 steal_info <- filtered_player_pos %>%
   inner_join(filter_steals, by=c("game_str", "play_id"))
 
-steal_info <- steal_info %>%
-  filter(player_position == 11 | player_position == 12)
+run_on_first_info <- steal_info %>%
+  filter(player_position == 11)
+
+unique_run_on_first_info <- c(unique(run_on_first_info$game_str))
+type(unique_run_on_first_info)
+
+run_on_second_info <- steal_info %>%
+  filter(player_position == 12)
+
+
+View(unique_run_on_first_info)
 
 
 ```
@@ -36,26 +45,31 @@ steal_info <- steal_info %>%
 #speed = distance/time
 #speed*time = distance
 #time = distance/speed
-speed_calc <- function(game_string, play, position) {
+speed_calc_first <- function(game_string, play, position) {
   
-  filtered_steal_info_copy <- steal_info %>%
+  filtered_steal_info_copy <- run_on_first_info %>%
     filter(game_str == game_string) %>%
     filter(play_id == play) %>%
     filter(player_position == position)
   
-  View(filtered_steal_info_copy)
+  n <- nrow(filtered_steal_info_copy)
+  speed_vector <- numeric(n)
+  acceleration_vector <- numeric(n)
   
-  speed_vector <- c(NA)
-  acceleration_vector <- c(NA)
-  time_vector <- c(NA)
-  
-  acceleration <- NA
-  for (i in 2:nrow(filtered_steal_info_copy)) {
+  for (i in 2:n) {
     
     row_a <- filtered_steal_info_copy[i, ]
     row_b <- filtered_steal_info_copy[i - 1, ]
+    if (any(is.na(row_a)) || any(is.na(row_b)) || length(speed_vector) <= 0){
+      next
+    }
+    
+    # print(paste("Row A: ", row_a))
+    # print(paste("Row B: ", row_b))
     
     delta_time <- row_a$timestamp - row_b$timestamp
+    
+    #print(paste("Delta Time: ", delta_time))
     
     delta_x <- row_a$field_x - row_b$field_x
     delta_y <- row_a$field_y - row_b$field_y
@@ -67,166 +81,126 @@ speed_calc <- function(game_string, play, position) {
     
     speed <- distance / delta_time
     
-    speed_vector <- c(speed_vector, speed)
+    speed_vector[i] <- speed
+    # print(paste("speed vector length:  ", length (speed_vector)))
     
-    if (length(speed_vector) > 1) {
-      acceleration <- speed_vector[length(speed_vector)] - speed_vector[length(speed_vector) - 1]
+    
+    if (!is.na(speed_vector[i - 1])) {
+      acceleration_vector[i] <- speed_vector[i] - speed_vector[i - 1]
     }
-    acceleration_vector <- c(acceleration_vector, acceleration)
   }
   
   filtered_steal_info_copy <- filtered_steal_info_copy %>%
-    mutate(speed = speed_vector)
+    mutate(player_speed = speed_vector,
+           acceleration = acceleration_vector)
   
-  filtered_steal_info_copy <- filtered_steal_info_copy %>%
-    mutate(acceleration = acceleration_vector)
+  max_speed <- max(filtered_steal_info_copy$player_speed, na.rm = TRUE)
   
-  max_speed <- max(filtered_steal_info_copy$speed, na.rm = TRUE)
-  max_speed_index <- which.max(filtered_steal_info_copy$speed)
+  max_speed_index <- which.max(filtered_steal_info_copy$player_speed)
   
   time_at_top_speed <- filtered_steal_info_copy$timestamp[max_speed_index]
   
-  print(max_speed)
-  print(max_speed_index)
   
   filtered_data <- filtered_steal_info_copy %>%
     filter(timestamp >= (time_at_top_speed - 2000) & timestamp <= (time_at_top_speed + 2000))
   
-  print(time_at_top_speed - 2000)
-  print("")
-  print(time_at_top_speed + 2000)
-  View(filtered_data)
+  #print(paste("Length of max speed: ", length(max_speed)))
+  return (max_speed)
+  # print(game_string)
+  # print(play)
+  # print(speed_vector)
+  # print(position)
+  # print(max_speed)
 }
 
-speed_calc("1883_006_Vis1AC_Home1A",188, 11)
+speed_calc_first("1884_143_Vis4BE_Home4A",251, 11)
 ```
-```{r}
-velocity_list <- c()
-running_speed <- c()
-acceleration_vector <- c()
-time_at_top_speed_vecor <- c()
 
-acceleration <- NA
-for (i in 2:nrow(steal_info)){
-  for (game in(steal_info$game_str)){
+```{r}
+#speed = distance/time
+#speed*time = distance
+#time = distance/speed
+speed_calc_second <- function(game_string, play, position) {
+  filtered_steal_info_copy <- run_on_second_info %>%
+    filter(game_str == game_string) %>%
+    filter(play_id == play) %>%
+    filter(player_position == position)
+  
+  n <- nrow(filtered_steal_info_copy)
+  speed_vector <- numeric(n)
+  acceleration_vector <- numeric(n)
+  
+  for (i in 2:n) {
+    # print(paste("index: ", i))
+    # print(paste("Game String: ", game_string))
+    # print(paste("Play ID: ", play))
     
-    row_a <- steal_info %>%
-      filter(game == game_str)
-    row_a <- row_a[i,]
-    row_b <- row_a[i-1,]
+    row_a <- filtered_steal_info_copy[i, ]
+    row_b <- filtered_steal_info_copy[i - 1, ]
+    if (is.na(row_a) || is.na(row_b)){
+      next
+    }
+    
+    # print(paste("Row A: ", row_a))
+    # print(paste("Row B: ", row_b))
     
     delta_time <- row_a$timestamp - row_b$timestamp
     
-    delta_x <- row_a$field_x - row_b$field_x
+    #print(paste("Delta Time: ", delta_time))
     
+    delta_x <- row_a$field_x - row_b$field_x
     delta_y <- row_a$field_y - row_b$field_y
     
     velocity_x <- delta_x / delta_time
     velocity_y <- delta_y / delta_time
     
-    velocity <- sqrt(velocity_x^2 + velocity_y^2)
+    distance <- sqrt(delta_x^2 + delta_y^2)
     
-    velocity_list <- c(velocity_list, velocity)
+    speed <- distance / delta_time
     
-    if (length(velocity_list) > 1) {
-      acceleration <- velocity_list[length(velocity_list)] - velocity_list[length(velocity_list) - 1]
+    speed_vector[i] <- speed
+    #print(paste("speed vector length:  ", length (speed_vector)))
+    
+    
+    if (!is.na(speed_vector[i - 1])) {
+      acceleration_vector[i] <- speed_vector[i] - speed_vector[i - 1]
     }
-    acceleration_vector <- c(acceleration_vector, acceleration)
   }
-  steal_info_copy <- steal_info %>%
-    mutate(velocity = velocity_list)
   
-  steal_info_copy <- steal_info %>%
-    mutate(acceleration = acceleration_vector)
+  filtered_steal_info_copy <- filtered_steal_info_copy %>%
+    mutate(player_speed = speed_vector,
+           acceleration = acceleration_vector)
   
-  View(steal_info_copy)
+  max_speed <- max(filtered_steal_info_copy$player_speed, na.rm = TRUE)
   
-  max_speed <- max(steal_info_copy$velocity, na.rm = TRUE)
-  max_speed_index <- which.max(steal_info_copy$velocity)
+  max_speed_index <- which.max(filtered_steal_info_copy$player_speed)
   
-  time_at_top_speed <-steal_info$timestamp[max_speed_index]
+  time_at_top_speed <- filtered_steal_info_copy$timestamp[max_speed_index]
   
-  print(max_speed)
-  print(max_speed_index)
   
-  filtered_data <- steal_info_copy %>%
+  filtered_data <- filtered_steal_info_copy %>%
     filter(timestamp >= (time_at_top_speed - 2000) & timestamp <= (time_at_top_speed + 2000))
   
-  print(time_at_top_speed - 2000)
-  print("")
-  print(time_at_top_speed + 2000)
-  View(filtered_data)
-  
-  game_df <- data.frame(
-    game_str = steal_info_copy$game_str, 
-    play_id = steal_info_copy$play_id,
-    timestamp=steal_info_copy$timestamp,
-    field_x = steal_info_copy$field_x,
-    field_y = steal_info_copy$field_y, 
-    velocity = steal_info_copy$velocity,
-    acceleration=steal_info_copy$acceleration
-  )
-  View(game_df)
+  #print(paste("Length of max speed: ", length(max_speed)))
+  return (max_speed)
+  # print(game_string)
+  # print(play)
+  # print(speed_vector)
+  # print(position)
+  # print(max_speed)
 }
-
-
 ```
-
 
 
 ```{r}
-#putting the coordinnates for the centre of each base below
-first_base_x <- 62.58
-first_base_y <- 63.64
+first_max_speed_vector <- c()
+second_max_speed_vector <- c()
 
-second_base_x <- 0 
-second_base_y <- 127.28
-
-third_base_x <- -62.58
-third_base_y <- 63.64
-
-#calculating the distance from the center of a base to the corner
-centre_corner_dist <- 0.75 * sqrt(2)
-
-#calculating the (x,y) coordinates of the bottom corner of second base in 
-# relation to first base
-second_corner_1_base_x <- second_base_x 
-second_corner_1_base_y <- second_base_y - centre_corner_dist
-
-#calculating the (x,y) coordinates of the top corner of second base in 
-# relation to first base
-second_corner_2_base_x <- second_base_x + centre_corner_dist
-second_corner_2_base_y <- second_base_y
-
-#calculating a buffer zone extending 6ft outwards from the corner of second base
-f_s_buffer_1 <- sqrt(second_corner_1_base_x ^ 2 + second_corner_1_base_y^2) + 6
-f_s_buffer_2 <- sqrt(second_corner_2_base_x ^ 2 + second_corner_2_base_y^2) + 6
-
-#calculating the (x,y) coordinates of the top corner of third base in 
-# relation to second base
-third_corner_1_base_x <- third_base_x
-third_corner_1_base_y <- third_base_y  + centre_corner_dist
-
-#calculating the (x,y) coordinates of the bottom corner of third base in 
-# relation to second base
-third_corner_2_base_x <- third_base_x + centre_corner_dist
-third_corner_2_base_y <- third_base_y
-
-#calculating a buffer zone extending 6ft outwards from the corner of third base
-s_t_buffer_1 <- sqrt(third_corner_1_base_x ^ 2 + third_corner_1_base_y^2) + 6
-s_t_buffer_2 <- sqrt(third_corner_2_base_x ^ 2 + third_corner_2_base_y^2) + 6
-
-
-
-View(fb_leadoff_x_y)
-
-#calculation the leadoff distance that a baserunner takes
-f_leadoff_x <- first_base_x # - fb_leadoff_x
-f_leadoff_y <- first_base_y # + fb_leadoff_y
-
-s_leadoff_x <- second_base_x # - sb_leadoff_x
-s_leadoff_y <- second_base_y # - sb_leadoff_y
+for(i in 1:nrow(filter_steals)){
+  #print(paste("Play ID: : ", filter_steals$play_id))
+  
+  first_max_speed_vector <- c(first_max_speed_vector, speed_calc_first(filter_steals$game_str[i], filter_steals$play_id[i], 11))
+  #second_max_speed_vector <- c(second_max_speed_vector, speed_calc_second(filter_steals$game_str[i], filter_steals$play_id[i], 12))
+}
+print(first_max_speed_vector)
 ```
-
-
-# calculate runner speed in (ft/second)
