@@ -6,6 +6,8 @@
 ## Pitch speed first:
 # First filter out the steal plays we need:
 steal_filtered_ball_pos <- inner_join(filtered_ball_pos, steal_plays, by = c("game_str" = "game_str", "play_id" = "play_per_game"))
+steal_filtered_game_info <- inner_join(filtered_game_info, steal_plays, by=c("game_str" = "game_str",  "play_id" = "play_per_game"))
+
 
 # Take ball_pos_y at timestamp 1 and at timestamp 8 (time diff of 350 ms)
 # just take y not x and z since we don't care about the absolute velo, only
@@ -31,3 +33,5 @@ avg_pitch_velo <- data.frame(game_str = pitch_speed_diffs$game_str,
 ## This is the final one:
 avg_pitch_velo_adj <- avg_pitch_velo %>%
   filter(pitch_velo >= 68)
+
+result <- merge(avg_pitch_velo_adj, steal_filtered_game_info)
