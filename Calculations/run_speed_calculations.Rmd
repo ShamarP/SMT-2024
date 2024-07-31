@@ -26,10 +26,8 @@ library(dplyr)
 steal_info <- filtered_player_pos %>%
   inner_join(filter_steals, by=c("game_str", "play_id"))
 
-steal_info_copy <- filtered_player_pos %>%
-  inner_join(filter_steals, by=c("game_str", "play_id")) %>%
+steal_info_copy <- steal_info %>%
   filter(player_position == 11 | player_position == 12)
-
 run_on_first_info <- steal_info %>%
   filter(player_position == 11)
 
@@ -47,12 +45,17 @@ speed_calc_first <- function(game_string, play, position) {
   filtered_steal_info_copy <- run_on_first_info %>%
     filter(game_str == game_string) %>%
     filter(play_id == play) %>%
-    filter(player_position == position)
+    filter(player_position  == position)
+  
   
   n <- nrow(filtered_steal_info_copy)
   speed_vector <- numeric(n)
   acceleration_vector <- numeric(n)
   
+  # level <-substr(game_string, nchar(game_string)-1, nchar(game_string) -1)
+  # level <- as.integer(level)
+  # 
+  # remove(level)
   for (i in 2:n) {
     
     row_a <- filtered_steal_info_copy[i, ]
@@ -74,11 +77,13 @@ speed_calc_first <- function(game_string, play, position) {
     velocity_x <- delta_x / delta_time
     velocity_y <- delta_y / delta_time
     
-    distance <- sqrt(delta_x^2 + delta_y^2)
+    speed <- sqrt(velocity_x^2 + velocity_y^2)
+    if(speed > 32){
+      speed_vector[i] <- NA
+    }else{
+      speed_vector[i] <- speed
+    }
     
-    speed <- distance / delta_time
-    
-    speed_vector[i] <- speed
     # print(paste("speed vector length:  ", length (speed_vector)))
     
     
@@ -90,10 +95,9 @@ speed_calc_first <- function(game_string, play, position) {
   filtered_steal_info_copy <- filtered_steal_info_copy %>%
     mutate(player_speed = speed_vector,
            acceleration = acceleration_vector)
-  
+    
   max_speed <- max(filtered_steal_info_copy$player_speed, na.rm = TRUE)
   
-  #print(paste("Length of max speed: ", length(max_speed)))
   return (max_speed)
   # print(game_string)
   # print(play)
@@ -102,27 +106,25 @@ speed_calc_first <- function(game_string, play, position) {
   # print(max_speed)
 }
 
-speed_calc_first("1884_069_Vis4AU_Home4A",53, 11)
+speed_calc_first("1883_019_Vis4AF_Home4A", 27, 11)
 ```
 
 ```{r}
-#speed = distance/time
-#speed*time = distance
-#time = distance/speed
+#idea: top 10 fastest baserunners in each minor league division
 speed_calc_second <- function(game_string, play, position) {
   
+ 
   second_steal_info_copy <- run_on_second_info %>%
     filter(game_str == game_string) %>%
     filter(play_id == play) %>%
     filter(player_position == position)
-  
+
+  #vectors
   second_n <- nrow(second_steal_info_copy)
   second_speed_vector <- numeric(second_n)
   second_acceleration_vector <- numeric(second_n)
+  
   for (j in 2:second_n) {
-    #print(paste("index: ", j))
-    # print(paste("Game String: ", game_string))
-    # print(paste("Play ID: ", play))
     
     second_row_a <- second_steal_info_copy[j, ]
     second_row_b <- second_steal_info_copy[j - 1, ]
@@ -130,12 +132,7 @@ speed_calc_second <- function(game_string, play, position) {
       next
     }
     
-    # print(paste("Row A: ", row_a))
-    # print(paste("Row B: ", row_b))
-    
     second_delta_time <- (second_row_a$timestamp - second_row_b$timestamp)/1000
-    
-    #print(paste("Delta Time: ", delta_time))
     
     second_delta_x <- second_row_a$field_x - second_row_b$field_x
     second_delta_y <- second_row_a$field_y - second_row_b$field_y
@@ -143,13 +140,14 @@ speed_calc_second <- function(game_string, play, position) {
     second_velocity_x <- second_delta_x / second_delta_time
     second_velocity_y <- second_delta_y / second_delta_time
     
-    second_distance <- sqrt(second_delta_x^2 + second_delta_y^2)
+    second_speed <- sqrt(second_velocity_x^2 + second_velocity_y^2)
     
-    second_speed <- second_distance / second_delta_time
-    
-    second_speed_vector[j] <- second_speed
-    #print(paste("speed vector length:  ", length (speed_vector)))
-    
+    if(second_speed > 32){
+      second_speed_vector[j] <- NA
+    }else{
+      second_speed_vector[j] <- second_speed
+      
+    }
     
     if (!is.na(second_speed_vector[j - 1])) {
       second_acceleration_vector[j] <- second_speed_vector[j] - second_speed_vector[j - 1]
@@ -161,21 +159,35 @@ speed_calc_second <- function(game_string, play, position) {
            second_acceleration = second_acceleration_vector)
   
   second_max_speed <- max(second_steal_info_copy$second_player_speed, na.rm = TRUE)
-  
-  #print(paste("Length of max speed: ", length(max_speed)))
   return (second_max_speed)
-  # print(game_string)
-  # print(play)
-  # print(speed_vector)
-  # print(position)
-  # print(max_speed)
 }
-speed_calc_second("1883_035_Vis2AC_Home2A", 205, 12)
+speed_calc_second("1883_019_Vis4AF_Home4A", 27, 12)
+```
+#Function to get the level that a player played in
+```{r}
+
+get_player_level <- function(game_string){
+  
+  # #getting the minor league level that the game was played in 
+  player_level <- substr(game_string, nchar(game_string)-1, nchar(game_string) -1)
+  player_level <- as.integer(player_level)
+  # 
+  # remove(second_level)
+  
+  return(player_level)
+}
 ```
 
 ```{r}
+
+#getting a filtered version of the filtered game info table such that it only includes plays where a steal was attempted
+steal_filtered_game_info <- inner_join(filtered_game_info, steal_plays, by=c("game_str" = "game_str",  "play_id" = "play_per_game"))
+
+#merging the filter_steals dataframe with the steal_filtered_game_info
+#to include more detailed infomation within the dataframe
 speed_result <- merge(filter_steals, steal_filtered_game_info)
-speed_result_copy <- merge(speed_result, steal_info_copy)
+
+speed_result_copy <- merge(speed_result, steal_info)
 
 fb_speed_result_copy <- speed_result_copy %>%
   filter(player_position == 11)
@@ -189,24 +201,66 @@ sb_speed_result_copy <- speed_result_copy %>%
 sb_speed_result_copy <- sb_speed_result_copy %>%
   distinct(play_id, .keep_all = TRUE)
 
-
 first_max_speed_vector <- c()
-second_max_speed_vector <- c()
+first_level_vector <- c()
 
-for(i in 1:nrow(fb_speed_result_copy)){
-  first_max_speed_vector <- c(first_max_speed_vector, speed_calc_first(fb_speed_result_copy$game_str[i], fb_speed_result_copy$play_id[i], 11))
-}
+second_max_speed_vector <- c()
+second_level_vector <- c()
+
+first_steal_pct_vector <- c()
+second_steal_pct_vector <- c()
+
+
 for (j in 1:nrow(sb_speed_result_copy)){
   second_max_speed_vector <- c(second_max_speed_vector, speed_calc_second(sb_speed_result_copy$game_str[j], sb_speed_result_copy$play_id[j], 12))
+  
+  second_level_vector <- c(second_level_vector, get_player_level(sb_speed_result_copy$game_str))
+  
+  second_steal_pct_vector <- c(player_steal_pct_vector, get_caught_stealing_pct(sb_speed_result_copy$game_str[j], sb_speed_result_copy$play_id[j], sb_speed_result_copy$second_baserunner[j]))
 }
-print(first_max_speed_vector)
-print(max(first_max_speed_vector))
+
+
+for(i in 1:nrow(fb_speed_result_copy)){
+  first_max_speed_vector  <- c(first_max_speed_vector, speed_calc_first(fb_speed_result_copy$game_str[i], fb_speed_result_copy$play_id[i], 11))
+  
+  first_level_vector <- c(first_level_vector, get_player_level(fb_speed_result_copy$game_str))
+}
 
 first_max_speed_df <- data.frame(
   "Max Speed" = first_max_speed_vector,
-  "Player ID" = fb_speed_result_copy$first_baserunner
+  "Player ID" = fb_speed_result_copy$first_baserunner,
+  "Player Level" = first_level_vector
 )
+
 View(first_max_speed_df)
+
+second_max_speed_df <- data.frame(
+  "Max Speed" = second_max_speed_vector,
+  "Player ID" = sb_speed_result_copy$second_baserunner,
+  "Player Level" = second_level_vector
+) 
+
+combined_max_speed_df <- rbind(first_max_speed_df, second_max_speed_df)
+
+combined_max_speed_df <- combined_max_speed_df %>%
+  rbind(mean(combined_max_speed_df$Max.Speed))
+
+level_one_max_speed_df <- combined_max_speed_df %>%
+  group_by(Player.Level) %>%
+  filter(Player.Level == 1) %>%
+  ungroup()
+level_two_max_speed_df <- combined_max_speed_df %>%
+  group_by(Player.Level) %>%
+  filter(Player.Level == 2) %>%
+  ungroup()
+level_three_max_speed_df <- combined_max_speed_df %>%
+  group_by(Player.Level) %>%
+  filter(Player.Level == 3) %>%
+  ungroup()
+level_four_max_speed_df <- combined_max_speed_df %>%
+  group_by(Player.Level) %>%
+  filter(Player.Level == 4) %>%
+  ungroup()
 
 ```
 #loading in the appropriate libraries
@@ -215,7 +269,34 @@ library(dplyr)
 library(ggplot2)
 library(gt)
 
-fastest_runners_f_to_s <- first_max_speed_df %>%
+fastest_runners <- combined_max_speed_df %>%
+  group_by(Player.ID, Player.Level) %>%
+  summarize(MaxSpeed = max(Max.Speed)) %>%
+  ungroup() %>%
+  arrange(desc(MaxSpeed)) %>%
+  mutate(Rank = row_number())%>%
+  slice_head(n = 10)
+
+top_runners_table <- fastest_runners %>%
+  gt() %>%
+  tab_header(
+    title = "Top 10 Basrunners by Maximum run speed"
+  )%>%
+  cols_label(
+    Player.ID = "Runner ID",
+    MaxSpeed = "Maximum Run Speed (ft/s)",
+    Rank = "Rank",
+    Player.Level = "Minor League Level"
+  )%>%
+  tab_options(
+    table.font.size = 12
+  )
+top_runners_table
+```
+
+#Creating a Table to Rank top 10 fastest Players in Rookie Ball
+```{r}
+level_one_fastest_runners <- level_one_max_speed_df %>%
   group_by(Player.ID) %>%
   summarize(MaxSpeed = max(Max.Speed)) %>%
   ungroup() %>%
@@ -223,18 +304,100 @@ fastest_runners_f_to_s <- first_max_speed_df %>%
   mutate(Rank = row_number())%>%
   slice_head(n = 10)
 
-top_runners_table_f_to_s <- fastest_runners_f_to_s %>%
+level_one_top_runners_table <- level_one_fastest_runners %>%
   gt() %>%
   tab_header(
-    title = "Top 10 First basrunners by Maximum run speed"
+    title = "Top 10 Basrunners by Maximum run speed in Rookie Ball"
   )%>%
   cols_label(
-    Player.ID = "Runner on First Base ID",
+    Player.ID = "Runner ID",
     MaxSpeed = "Maximum Run Speed (ft/s)",
     Rank = "Rank"
   )%>%
   tab_options(
     table.font.size = 12
   )
-top_runners_table_f_to_s
+level_one_top_runners_table
+```
+
+```{r}
+level_two_fastest_runners <- level_two_max_speed_df %>%
+  group_by(Player.ID) %>%
+  summarize(MaxSpeed = max(Max.Speed)) %>%
+  ungroup() %>%
+  arrange(desc(MaxSpeed)) %>%
+  mutate(Rank = row_number())%>%
+  slice_head(n = 10)
+
+level_two_top_runners_table <- level_two_fastest_runners %>%
+  gt() %>%
+  tab_header(
+    title = "Top 10 Basrunners by Maximum run speed in High A"
+  )%>%
+  cols_label(
+    Player.ID = "Runner ID",
+    MaxSpeed = "Maximum Run Speed (ft/s)",
+    Rank = "Rank"
+  )%>%
+  tab_options(
+    table.font.size = 12
+  )
+level_two_top_runners_table
+```
+
+#Creating a Table Showcase top 10 Fastest players in Double A
+```{r}
+level_three_fastest_runners <- level_three_max_speed_df %>%
+  group_by(Player.ID) %>%
+  summarize(MaxSpeed = max(Max.Speed)) %>%
+  ungroup() %>%
+  arrange(desc(MaxSpeed)) %>%
+  mutate(Rank = row_number())%>%
+  slice_head(n = 10)
+
+level_three_top_runners_table <- level_three_fastest_runners %>%
+  gt() %>%
+  tab_header(
+    title = "Top 10 Basrunners by Maximum run speed in Double A"
+  )%>%
+  cols_label(
+    Player.ID = "Runner ID",
+    MaxSpeed = "Maximum Run Speed (ft/s)",
+    Rank = "Rank"
+  )%>%
+  tab_options(
+    table.font.size = 12
+  )
+level_three_top_runners_table
+```
+#Creating a Table Showcase top 10 Fastest players in Triple A
+```{r}
+level_four_fastest_runners <- level_four_max_speed_df %>%
+  group_by(Player.ID) %>%
+  summarize(MaxSpeed = max(Max.Speed)) %>%
+  ungroup() %>%
+  arrange(desc(MaxSpeed)) %>%
+  mutate(Rank = row_number())%>%
+  slice_head(n = 10)
+
+level_four_top_runners_table <- level_four_fastest_runners %>%
+  gt() %>%
+  tab_header(
+    title = "Top 10 Basrunners by Maximum run speed in Triple A"
+  )%>%
+  cols_label(
+    Player.ID = "Runner ID",
+    MaxSpeed = "Maximum Run Speed (ft/s)",
+    Rank = "Rank"
+  )%>%
+  tab_options(
+    table.font.size = 12
+  )
+level_four_top_runners_table
+
+
+ggplot(level_four_max_speed_df, aes(x = Max.Speed, y= Player.ID)) + 
+  geom_line(color = "blue") +
+  geom_point(color = "red" ) +
+  labs(title = "Triple A Player Max Speed", x = "X Axis", y = "Y Axis")
 ```
