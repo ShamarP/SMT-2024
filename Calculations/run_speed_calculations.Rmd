@@ -272,7 +272,7 @@ level_four_max_speed_df <- combined_max_speed_df %>%
   ungroup()
 
 ```
-#creating tables ranking player max speed overall and at each level
+#creating tables ranking player max speed overall
 ```{r}
 library(dplyr)
 library(ggplot2)
