@@ -1,4 +1,4 @@
-## Andy Hutchison
+
 ## SMT 2024
 
 ## I'm gonna try and filter to have only stolen bases
