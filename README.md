@@ -1,4 +1,9 @@
 # SMT-2024
+
+# Authors:
+
+[Andy Hutchison](https://github.com/nunoor44), [Max Greaves](https://github.com/maxgreaves), [Ryan Dajani](https://github.com/RyanD17), [Shamar Phillips](https://github.com/ShamarP)
+
 # Purpose:
 
 This project was a submission to the SMT Data Challenge. It aims to tackle to question of whether stolen bases are the pitcher's fault or the catcher's fault, and provide tools that are easy to interpret that are also effective in tracking development.
@@ -45,6 +50,3 @@ This file is used to create our tables highlighting the best pitchers and catche
 
 This is our final paper where we make our case on who is at fault when giving up a stolen base. What we deemed to be the most important graphs and figures are presented and described in detail within this paper as well.
 
-# Contributors:
-
-[Andy Hutchison](https://github.com/nunoor44), [Max Greaves](https://github.com/maxgreaves), [Ryan Dajani](https://github.com/RyanD17), [Shamar Phillips](https://github.com/ShamarP)
